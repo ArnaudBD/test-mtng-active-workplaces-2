@@ -1,0 +1,97 @@
+# Docker Compose - SECURE ISOLATED execution of UNTRUSTED code
+# Your host system is protected:
+# - NO internet access for containers (internal network)
+# - Ports bound to localhost only
+# - Resource limits prevent crypto mining / DoS
+# - No access to your host filesystem
+
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: mtng-mongodb
+    restart: "no"
+    environment:
+      - MONGO_INITDB_DATABASE=conduit
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - isolated
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongodb:27017/conduit --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: mtng-backend
+    restart: "no"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/conduit
+      - PORT=3001
+      - SECRET=docker-isolated-secret-key
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - isolated
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mtng-frontend
+    restart: "no"
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - isolated
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/node_modules/.cache
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    stdin_open: true
+    tty: true
+
+networks:
+  isolated:
+    driver: bridge
+    internal: true  # BLOCKS ALL INTERNET ACCESS
+
+volumes:
+  mongodb_data:
