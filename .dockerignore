@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+server/node_modules
+
+# Build outputs
+build
+dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Environment files (don't want to accidentally copy secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage
+
+# Truffle/Ethereum build artifacts
+contracts/build
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (no need to copy these into container)
+Dockerfile
+docker-compose.yml
+.dockerignore
